@@ -13,6 +13,8 @@ using Microsoft.Extensions.Options;
 using NJsonSchema;
 using NSwag.AspNetCore;
 using System.Reflection;
+using Microsoft.EntityFrameworkCore;
+using ShoppingList.Models;
 
 namespace ShoppingList
 {
@@ -29,6 +31,7 @@ namespace ShoppingList
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
+            services.AddDbContext<ApplicationContext>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
