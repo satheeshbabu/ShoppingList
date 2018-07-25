@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using ShoppingList.Models;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
@@ -15,6 +16,7 @@ namespace ShoppingList.Controllers
     public class UserController : ControllerBase
     {
         private readonly ApplicationContext _context;
+
         public UserController(ApplicationContext context)
         {
             _context = context;
@@ -22,38 +24,76 @@ namespace ShoppingList.Controllers
 
         // GET: api/<controller>
         [HttpGet]
-        public ActionResult<List<User>> GetAll()
+        public IEnumerable<User> GetUsers()
         {
-            return _context.Users.ToList();
+            return _context.Users;
         }
 
         // GET api/<controller>/5
         [HttpGet("{id}", Name ="GetUser")]
-        public ActionResult<User> GetById(long id)
+        public async Task<IActionResult> GetUser([FromRoute] long id)
         {
-            var item = _context.Users.Find(id);
-            if (item == null)
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var user = await _context.Users.FindAsync(id);
+
+            if (user == null)
             {
                 return NotFound();
             }
-            return item;
+            return Ok(user);
         }
 
         // POST api/<controller>
         [HttpPost]
-        public IActionResult Create([FromBody] User user)
+        public async Task<IActionResult> Create([FromBody] User user)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
             _context.Users.Add(user);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return CreatedAtRoute("GetUser", new { id = user.UserId }, user);
         }
 
         // PUT api/<controller>/5
         [HttpPut("{id}")]
-        public IActionResult Update(long id, [FromBody]User user)
+        public async Task<IActionResult> Update([FromRoute] long id, [FromBody]User user)
         {
-            var user_old = _context.Users.Find(id);
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            if (id != user.UserId)
+            {
+                return BadRequest();
+            }
+
+            _context.Entry(user).State = EntityState.Modified;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!UserExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+            /*var user_old = _context.Users.Find(id);
             if (user_old == null)
             {
                 return NotFound();
@@ -62,6 +102,8 @@ namespace ShoppingList.Controllers
             user_old.UserGroups = user.UserGroups;
             _context.Users.Update(user_old);
             _context.SaveChanges();
+            return NoContent();*/
+
             return NoContent();
 
         }
@@ -78,6 +120,11 @@ namespace ShoppingList.Controllers
             _context.Users.Remove(user);
             _context.SaveChanges();
             return NoContent();
+        }
+
+        private bool UserExists(long id)
+        {
+            return _context.Users.Any(u => u.UserId == id);
         }
     }
 }
